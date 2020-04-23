@@ -14,23 +14,60 @@ namespace mandrake::server {
 const auto buffer_size = 1024;
 const auto max_request_size = 1024 * 1024 * 1024;  // 1GB
 
+std::string get_next_request_line(std::string &buffer, unsigned int start) {
+    int new_line_end = buffer.find("\r\n", start);
+    return buffer.substr(start, new_line_end - start);
+}
+
 HttpServer::HttpServer(uint16_t port) : port{port} {}
 
 void HttpServer::process_request(int remote_socket_descriptor) {
     request::HttpRequest request = HttpServer::read_request(remote_socket_descriptor);
-    std::vector<char> response = response::HttpResponse { .status_code =  200, .body =  "hello" }.to_http();
+    auto http_response = response::HttpResponse {};
+    http_response.status_code =  200;
+    http_response.http_version = request.http_version;
+    http_response.body =  "hello";
+
+    std::string response = http_response.to_http();
     if (write(remote_socket_descriptor, response.data(), response.size()) == -1) {
         throw std::runtime_error("Can't write");
     }
 }
 
 request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
-    std::vector<char> request_data;
-    std::vector<char> buffer(buffer_size);
-    while (read(remote_socket_descriptor, buffer.data(), buffer.size()) > 0) {
-        request_data.insert(request_data.end(), buffer.begin(), buffer.end());
+    std::string buffer(buffer_size, 0);
+    int read_bytes = read(remote_socket_descriptor, buffer.data(), buffer.size());
+    if (read_bytes == -1) {
+        throw std::runtime_error("Unable to read socket");
     }
-    return request::HttpRequest::from_http(request_data);
+    std::string first_line = get_next_request_line(buffer, 0);
+    int separator1 = first_line.find(' ');
+    std::string http_method = first_line.substr(0, separator1);
+    int separator2 = first_line.find(' ', separator1 + 1);
+    std::string uri = first_line.substr(separator1 + 1, separator2 - separator1);
+    std::string http_version = first_line.substr(separator2 + 1, first_line.size() - 1);
+
+    std::unordered_map<std::string, std::string> headers;
+    bool empty_line_found = false;
+    int previous_line_start = static_cast<int>(first_line.size()) + 2;
+    while (!empty_line_found) {
+        std::string header_line = get_next_request_line(buffer, previous_line_start);
+        if (header_line.empty()) {
+            empty_line_found = true;
+        } else {
+            int title_split = header_line.find(':');
+            headers[header_line.substr(0, title_split)] = header_line.substr(title_split + 2,
+                    header_line.size() - title_split);
+            previous_line_start += static_cast<int>(header_line.size()) + 2;
+        }
+    }
+
+    request::HttpRequest req;
+    req.method = request::HttpRequest::parse_method(http_method);
+    req.http_version = http_version;
+    req.headers = headers;
+    req.url = uri;
+    return req;
 }
 
 [[noreturn]] void HttpServer::read_loop(int socket_descriptor, int thread_number) {
@@ -42,7 +79,7 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
         if (remote_socket > 0) {
             std::cout << "Received connection in thread " << thread_number;
             HttpServer::process_request(remote_socket);
-            close(socket_descriptor);
+            close(remote_socket);
         }
     }
 }

@@ -1,6 +1,7 @@
 #ifndef MANDRAKE_RESPONSE_H
 #define MANDRAKE_RESPONSE_H
 
+#include <unordered_map>
 #include <string>
 #include <vector>
 
@@ -9,8 +10,12 @@ class HttpResponse {
 public:
     int status_code;
     std::string body;
-
-    [[nodiscard]] std::vector<char> to_http() const;
+    std::string http_version;
+    std::unordered_map<std::string, std::string> headers;
+    [[nodiscard]] std::string to_http() const;
+private:
+    static const std::unordered_map<int, std::string> status_code_phrases;
+    static const std::string content_length_header;
 };
 }
 

@@ -16,7 +16,6 @@ private:
     uint16_t port = 0;
     void static process_request(int socket_descriptor);
     [[nodiscard]] static request::HttpRequest read_request(int remote_socket_descriptor);
-
     [[noreturn]] static void read_loop(int socket_descriptor, int thread_number);
 };
 }
