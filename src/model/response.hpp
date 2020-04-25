@@ -15,8 +15,7 @@ public:
     std::unordered_map<std::string, std::string> headers;
     [[nodiscard]] std::string to_http() const;
 private:
-    static const std::unordered_map<int, std::string> status_code_phrases;
-    static const std::string content_length_header;
+    static void add_header(std::string &response, std::string const& name, std::string const& value);
 };
 }
 

@@ -6,15 +6,37 @@
 #include <thread>
 
 #include "server.hpp"
+#include "../model/constants.hpp"
 
 namespace mandrake::server {
 
 const auto buffer_size = 1024;
 const auto max_request_size = 1024 * 1024 * 1024;  // 1GB
 
-std::string get_next_request_line(std::string &buffer, unsigned int start) {
+// Get the next message line from the buffer
+std::string get_next_message_line(std::string &buffer, unsigned int start) {
     int new_line_end = buffer.find("\r\n", start);
     return buffer.substr(start, new_line_end - start);
+}
+
+// Populate the headers map and get the location of the next line
+unsigned int populate_headers(std::unordered_map<std::string, std::string> &headers,
+        std::string &buffer, unsigned int start) {
+    bool empty_line_found = false;
+    while (!empty_line_found) {
+        std::string header_line = get_next_message_line(buffer, start);
+        start += header_line.size() + 2;
+        if (header_line.empty()) {
+            empty_line_found = true;
+        } else {
+            int title_split = header_line.find(':');
+            headers.insert({
+                                   header_line.substr(0, title_split),
+                                   header_line.substr(title_split + 2, header_line.size() - title_split)
+                           });
+        }
+    }
+    return start;
 }
 
 HttpServer::HttpServer(mandrake::app::App app, uint16_t port): port{port}, app{std::move(app)} {}
@@ -35,28 +57,19 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
     if (read_bytes == -1) {
         throw std::runtime_error("Unable to read socket");
     }
-    std::string first_line = get_next_request_line(buffer, 0);
-    int separator1 = first_line.find(' ');
-    std::string http_method = first_line.substr(0, separator1);
-    int separator2 = first_line.find(' ', separator1 + 1);
-    std::string url_path = first_line.substr(separator1 + 1, separator2 - separator1 - 1);
-    std::string http_version = first_line.substr(separator2 + 1, first_line.size() - 1);
+    std::string request_line = get_next_message_line(buffer, 0);
+    int separator1 = request_line.find(constants::sp);
+    int separator2 = request_line.find(constants::sp, separator1 + 1);
+    std::string http_method = request_line.substr(0, separator1);
+    std::string url_path = request_line.substr(separator1 + 1, separator2 - separator1 - 1);
+    std::string http_version = request_line.substr(separator2 + 1, request_line.size() - 1);
 
     std::unordered_map<std::string, std::string> headers;
-    bool empty_line_found = false;
-    int previous_line_start = static_cast<int>(first_line.size()) + 2;
-    while (!empty_line_found) {
-        std::string header_line = get_next_request_line(buffer, previous_line_start);
-        if (header_line.empty()) {
-            empty_line_found = true;
-        } else {
-            int title_split = header_line.find(':');
-            headers.insert({
-                header_line.substr(0, title_split),
-                header_line.substr(title_split + 2, header_line.size() - title_split)
-            });
-            previous_line_start += static_cast<int>(header_line.size()) + 2;
-        }
+    unsigned int headers_start = request_line.size() + 2;
+    unsigned int headers_end = populate_headers(headers, buffer, headers_start);
+
+    if (headers.contains(constants::content_length_header)) {
+
     }
 
     request::HttpRequest req;

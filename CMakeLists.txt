@@ -10,7 +10,7 @@ add_executable(
     src/server/server.cpp
     src/model/app.cpp
     src/model/request.cpp
-        src/model/response.cpp
+    src/model/response.cpp
 )
 
 set_target_properties(mandrake PROPERTIES LINKER_LANGUAGE CXX)
