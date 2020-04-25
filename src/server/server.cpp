@@ -6,8 +6,6 @@
 #include <thread>
 
 #include "server.hpp"
-#include "../model/request.hpp"
-#include "../model/response.hpp"
 
 namespace mandrake::server {
 
@@ -19,15 +17,12 @@ std::string get_next_request_line(std::string &buffer, unsigned int start) {
     return buffer.substr(start, new_line_end - start);
 }
 
-HttpServer::HttpServer(uint16_t port) : port{port} {}
+HttpServer::HttpServer(mandrake::app::App app, uint16_t port): port{port}, app{std::move(app)} {}
 
-void HttpServer::process_request(int remote_socket_descriptor) {
+void HttpServer::process_request(int remote_socket_descriptor, app::App const& app) {
     request::HttpRequest request = HttpServer::read_request(remote_socket_descriptor);
-    auto http_response = response::HttpResponse {};
-    http_response.status_code =  200;
+    auto http_response = app.route_request(request);
     http_response.http_version = request.http_version;
-    http_response.body =  "hello";
-
     std::string response = http_response.to_http();
     if (write(remote_socket_descriptor, response.data(), response.size()) == -1) {
         throw std::runtime_error("Can't write");
@@ -44,7 +39,7 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
     int separator1 = first_line.find(' ');
     std::string http_method = first_line.substr(0, separator1);
     int separator2 = first_line.find(' ', separator1 + 1);
-    std::string uri = first_line.substr(separator1 + 1, separator2 - separator1);
+    std::string url_path = first_line.substr(separator1 + 1, separator2 - separator1 - 1);
     std::string http_version = first_line.substr(separator2 + 1, first_line.size() - 1);
 
     std::unordered_map<std::string, std::string> headers;
@@ -56,8 +51,10 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
             empty_line_found = true;
         } else {
             int title_split = header_line.find(':');
-            headers[header_line.substr(0, title_split)] = header_line.substr(title_split + 2,
-                    header_line.size() - title_split);
+            headers.insert({
+                header_line.substr(0, title_split),
+                header_line.substr(title_split + 2, header_line.size() - title_split)
+            });
             previous_line_start += static_cast<int>(header_line.size()) + 2;
         }
     }
@@ -66,19 +63,19 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
     req.method = request::HttpRequest::parse_method(http_method);
     req.http_version = http_version;
     req.headers = headers;
-    req.url = uri;
+    req.url_path = url_path;
     return req;
 }
 
-[[noreturn]] void HttpServer::read_loop(int socket_descriptor, int thread_number) {
-    std::cout << "Initialized thread " << thread_number;
+[[noreturn]] void HttpServer::read_loop(int socket_descriptor, int thread_number, app::App const& app) {
+    std::cout << "Initialized thread " << thread_number << std::endl;
     while (true) {
         sockaddr_in client{};
         ulong client_size = sizeof(client);
         int remote_socket = accept(socket_descriptor, (sockaddr *) &client, (socklen_t *) &client_size);
         if (remote_socket > 0) {
-            std::cout << "Received connection in thread " << thread_number;
-            HttpServer::process_request(remote_socket);
+            std::cout << "Received connection in thread " << thread_number << std::endl;
+            HttpServer::process_request(remote_socket, app);
             close(remote_socket);
         }
     }
@@ -103,12 +100,12 @@ int HttpServer::run() const {
 
     listen(socket_desc, 3);
 
-    std::cout << "Listening for connections";
+    std::cout << "Listening for connections" << std::endl;
 
     unsigned int threads = std::thread::hardware_concurrency();
     std::vector<std::shared_ptr<std::thread>> request_handlers;
     for (auto i = 0; i < threads; i++) {
-        auto request_handler = std::make_shared<std::thread>(HttpServer::read_loop, socket_desc, i);
+        auto request_handler = std::make_shared<std::thread>(this->read_loop, socket_desc, i, this->app);
         request_handlers.emplace_back(request_handler);
     }
     for (auto const& request_handler : request_handlers) {

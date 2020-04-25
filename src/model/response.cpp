@@ -10,6 +10,8 @@ void add_header(std::string &response, std::string const& name, std::string cons
     response += "\r\n";
 }
 
+HttpResponse::HttpResponse(int status_code): status_code{status_code} {}
+
 std::string HttpResponse::to_http() const {
     std::string response = this->http_version;
     response += " " + std::to_string(this->status_code);

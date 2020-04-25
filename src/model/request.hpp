@@ -1,7 +1,3 @@
-//
-// Created by alvaro on 12/04/2020.
-//
-
 #ifndef MANDRAKE_REQUEST_H
 #define MANDRAKE_REQUEST_H
 
@@ -30,7 +26,7 @@ static std::vector<HttpMethod> methods_with_body {
 class HttpRequest {
 public:
     HttpMethod method;
-    std::string url;
+    std::string url_path;
     std::string http_version;
     std::unordered_map<std::string, std::string> headers;
     std::string body;

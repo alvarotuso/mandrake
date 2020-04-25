@@ -8,6 +8,7 @@
 namespace mandrake::response {
 class HttpResponse {
 public:
+    explicit HttpResponse(int status_code);
     int status_code;
     std::string body;
     std::string http_version;
