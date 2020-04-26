@@ -30,13 +30,23 @@ unsigned int populate_headers(std::unordered_map<std::string, std::string> &head
             empty_line_found = true;
         } else {
             int title_split = header_line.find(':');
-            headers.insert({
-                                   header_line.substr(0, title_split),
-                                   header_line.substr(title_split + 2, header_line.size() - title_split)
-                           });
+            headers.insert(
+                { header_line.substr(0, title_split),
+                   header_line.substr(title_split + 2, header_line.size() - title_split) }
+            );
         }
     }
     return start;
+}
+
+// Read a buffer from this socket
+std::string read_from_socket(int remote_socket_descriptor) {
+    std::string buffer(buffer_size, 0);
+    int read_bytes = read(remote_socket_descriptor, buffer.data(), buffer.size());
+    if (read_bytes == -1) {
+        throw std::runtime_error("Unable to read socket");
+    }
+    return buffer;
 }
 
 HttpServer::HttpServer(mandrake::app::App app, uint16_t port): port{port}, app{std::move(app)} {}
@@ -52,11 +62,7 @@ void HttpServer::process_request(int remote_socket_descriptor, app::App const& a
 }
 
 request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
-    std::string buffer(buffer_size, 0);
-    int read_bytes = read(remote_socket_descriptor, buffer.data(), buffer.size());
-    if (read_bytes == -1) {
-        throw std::runtime_error("Unable to read socket");
-    }
+    std::string buffer = read_from_socket(remote_socket_descriptor);
     std::string request_line = get_next_message_line(buffer, 0);
     int separator1 = request_line.find(constants::sp);
     int separator2 = request_line.find(constants::sp, separator1 + 1);
@@ -68,16 +74,22 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
     unsigned int headers_start = request_line.size() + 2;
     unsigned int headers_end = populate_headers(headers, buffer, headers_start);
 
-    if (headers.contains(constants::content_length_header)) {
+    request::HttpRequest request;
+    request.method = request::HttpRequest::parse_method(http_method);
+    request.http_version = http_version;
+    request.headers = headers;
+    request.url_path = url_path;
 
+    if (headers.contains(constants::content_length_header) &&
+            request::methods_with_body.contains(request.method)) {
+        unsigned int body_size = std::stoi(headers.at(constants::content_length_header));
+        std::string body = buffer.substr(headers_end, buffer.size() - headers_end - 1);
+        while (body.size() < body_size) {
+            body += read_from_socket(remote_socket_descriptor);
+        }
     }
 
-    request::HttpRequest req;
-    req.method = request::HttpRequest::parse_method(http_method);
-    req.http_version = http_version;
-    req.headers = headers;
-    req.url_path = url_path;
-    return req;
+    return request;
 }
 
 [[noreturn]] void HttpServer::read_loop(int socket_descriptor, int thread_number, app::App const& app) {

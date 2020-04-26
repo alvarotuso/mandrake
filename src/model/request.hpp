@@ -3,7 +3,7 @@
 
 #include <unordered_map>
 #include <string>
-#include <vector>
+#include <set>
 
 namespace mandrake::request {
 enum HttpMethod {
@@ -17,7 +17,7 @@ enum HttpMethod {
     TRACE,
 };
 
-static std::vector<HttpMethod> methods_with_body {
+static std::set<HttpMethod> methods_with_body {
     HttpMethod::PATCH,
     HttpMethod::POST,
     HttpMethod::PUT,
