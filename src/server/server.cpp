@@ -14,9 +14,16 @@ const auto buffer_size = 1024;
 const auto max_request_size = 1024 * 1024 * 1024;  // 1GB
 
 // Get the next message line from the buffer
-std::string get_next_message_line(std::string &buffer, unsigned int start) {
+std::string get_next_message_line(std::string const& buffer, unsigned int start) {
     int new_line_end = buffer.find("\r\n", start);
     return buffer.substr(start, new_line_end - start);
+}
+
+// Read buffer to the end or until finding a null terminator
+std::string read_remaining_buffer(std::string const& buffer, unsigned int start) {
+    int buffer_end = buffer.find('\0');
+    unsigned int chars_to_read = buffer_end > 0 ? buffer_end - start: buffer.size() - start;
+    return buffer.substr(start, chars_to_read);
 }
 
 // Populate the headers map and get the location of the next line
@@ -82,11 +89,13 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
 
     if (headers.contains(constants::content_length_header) &&
             request::methods_with_body.contains(request.method)) {
-        unsigned int body_size = std::stoi(headers.at(constants::content_length_header));
-        std::string body = buffer.substr(headers_end, buffer.size() - headers_end - 1);
+        int body_size = std::stoi(headers.at(constants::content_length_header));
+        std::string body = read_remaining_buffer(buffer, headers_end);
         while (body.size() < body_size) {
-            body += read_from_socket(remote_socket_descriptor);
+            buffer = read_from_socket(remote_socket_descriptor);
+            body += read_remaining_buffer(buffer, 0);
         }
+        request.body = body;
     }
 
     return request;

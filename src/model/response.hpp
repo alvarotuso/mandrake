@@ -1,6 +1,5 @@
 #ifndef MANDRAKE_RESPONSE_H
 #define MANDRAKE_RESPONSE_H
-
 #include <unordered_map>
 #include <string>
 #include <vector>
