@@ -74,7 +74,7 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
     int separator1 = request_line.find(constants::sp);
     int separator2 = request_line.find(constants::sp, separator1 + 1);
     std::string http_method = request_line.substr(0, separator1);
-    std::string url_path = request_line.substr(separator1 + 1, separator2 - separator1 - 1);
+    std::string url = request_line.substr(separator1 + 1, separator2 - separator1 - 1);
     std::string http_version = request_line.substr(separator2 + 1, request_line.size() - 1);
 
     std::unordered_map<std::string, std::string> headers;
@@ -82,10 +82,10 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
     unsigned int headers_end = populate_headers(headers, buffer, headers_start);
 
     request::HttpRequest request;
-    request.method = request::HttpRequest::parse_method(http_method);
+    request.parse_method(http_method);
     request.http_version = http_version;
     request.headers = headers;
-    request.url_path = url_path;
+    request.parse_url(url);
 
     if (headers.contains(constants::content_length_header) &&
             request::methods_with_body.contains(request.method)) {
@@ -116,8 +116,6 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
 }
 
 int HttpServer::run() const {
-    // TODO: use SOCK_RAW
-    // Add SOCK_NONBLOCK flags
     int socket_desc = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_desc == -1) {
         throw std::runtime_error("Unable to get socket!!");

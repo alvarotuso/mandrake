@@ -1,7 +1,3 @@
-//
-// Created by alvaro on 25/04/2020.
-//
-
 #ifndef MANDRAKE_CONSTANTS_HPP
 #define MANDRAKE_CONSTANTS_HPP
 
@@ -9,12 +5,12 @@
 #include <unordered_map>
 
 namespace mandrake::constants {
-const std::string content_length_header = "Content-Length";
-const std::string crlf = "\r\n";
-const std::string sp = " ";
-const std::string header_separator = ": ";
+static const std::string content_length_header = "Content-Length";
+static const std::string crlf = "\r\n";
+static const std::string sp = " ";
+static const std::string header_separator = ": ";
 
-const std::unordered_map<int, std::string> status_code_phrases {
+static const std::unordered_map<int, std::string> status_code_phrases {
     { 100, "Continue" },
     { 101, "Switching Protocols" },
     { 200, "OK" },
