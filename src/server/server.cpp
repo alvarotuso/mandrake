@@ -22,7 +22,7 @@ std::string get_next_message_line(std::string const& buffer, unsigned int start)
 // Read buffer to the end or until finding a null terminator
 std::string read_remaining_buffer(std::string const& buffer, unsigned int start) {
     int buffer_end = buffer.find('\0');
-    unsigned int chars_to_read = buffer_end > 0 ? buffer_end - start: buffer.size() - start;
+    unsigned int chars_to_read = buffer_end > 0 ? buffer_end - start : buffer.size() - start;
     return buffer.substr(start, chars_to_read);
 }
 
@@ -83,19 +83,19 @@ request::HttpRequest HttpServer::read_request(int remote_socket_descriptor) {
 
     request::HttpRequest request;
     request.parse_method(http_method);
-    request.http_version = http_version;
-    request.headers = headers;
+    request.http_version = std::move(http_version);
+    request.headers = std::move(headers);
     request.parse_url(url);
 
-    if (headers.contains(constants::content_length_header) &&
+    if (request.headers.contains(constants::content_length_header) &&
             request::methods_with_body.contains(request.method)) {
-        int body_size = std::stoi(headers.at(constants::content_length_header));
+        int body_size = std::stoi(request.headers.at(constants::content_length_header));
         std::string body = read_remaining_buffer(buffer, headers_end);
         while (body.size() < body_size) {
             buffer = read_from_socket(remote_socket_descriptor);
             body += read_remaining_buffer(buffer, 0);
         }
-        request.body = body;
+        request.body = std::move(body);
     }
 
     return request;

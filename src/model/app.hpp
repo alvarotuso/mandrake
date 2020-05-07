@@ -5,15 +5,22 @@
 #include "response.hpp"
 
 namespace mandrake::app {
-    typedef response::HttpResponse resource_t (request::HttpRequest const& request);
+typedef response::HttpResponse resource_t (request::HttpRequest const& request);
 
-    class App {
-    public:
-        void add_resource(std::string url_pattern, resource_t &resource);
-        [[nodiscard]] response::HttpResponse route_request(request::HttpRequest const& request) const;
-    private:
-        std::unordered_map<std::string, resource_t&> resources;
-    };
+struct ResourceTreeNode {
+    std::unordered_map<std::string, ResourceTreeNode*> children;
+    resource_t* resource = nullptr;
+    bool is_parameter = false;
+};
+
+class App {
+public:
+    App();
+    void add_resource(std::string url_pattern, resource_t &resource);
+    [[nodiscard]] response::HttpResponse route_request(request::HttpRequest const& request) const;
+private:
+    ResourceTreeNode* resource_tree_root;
+};
 }
 
 #endif //MANDRAKE_APP_HPP

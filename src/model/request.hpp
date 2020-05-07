@@ -41,6 +41,7 @@ public:
     std::string http_version;
     std::unordered_map<std::string, std::string> headers;
     std::unordered_map<std::string, std::string> url_parameters;
+    std::unordered_map<std::string, std::string> url_variables;
     std::string body;
 
     void parse_method(std::string &request_method);
