@@ -11,6 +11,7 @@ add_executable(
     src/model/app.cpp
     src/model/request.cpp
     src/model/response.cpp
+    src/utils/iterators.cpp
 )
 
 set_target_properties(mandrake PROPERTIES LINKER_LANGUAGE CXX)
