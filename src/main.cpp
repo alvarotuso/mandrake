@@ -10,7 +10,7 @@ mandrake::response::HttpResponse ping(mandrake::request::HttpRequest const& requ
 }
 
 int main() {
-    mandrake::app::App app;
+    mandrake::app::App app {};
     app.add_resource("/ping", ping);
     mandrake::server::HttpServer server { app, 8080 };
     return server.run();

@@ -11,7 +11,8 @@ private:
     std::string split;
     void get_next_value();
 public:
-    StringSplitIterator(std::string original_string, std::string split, int start_index);
+    explicit StringSplitIterator(std::string original_string, std::string split, int start_index);
+    explicit StringSplitIterator();
     bool operator!=(StringSplitIterator const& other) const;
     std::string operator*();
     void operator++();

@@ -11,11 +11,15 @@ struct ResourceTreeNode {
     std::unordered_map<std::string, ResourceTreeNode*> children;
     resource_t* resource = nullptr;
     bool is_parameter = false;
+
+    explicit ResourceTreeNode() = default;
+    ~ResourceTreeNode();
 };
 
 class App {
 public:
-    App();
+    explicit App();
+    ~App();
     void add_resource(std::string url_pattern, resource_t &resource);
     [[nodiscard]] response::HttpResponse route_request(request::HttpRequest const& request) const;
 private:

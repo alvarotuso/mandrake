@@ -11,13 +11,20 @@ namespace mandrake::utils::iterators {
     }
 
     StringSplitIterator StringSplitGenerator::end() {
-        return StringSplitIterator(this->original_string, this->split, this->original_string.size());
+        return StringSplitIterator();
     }
 
     void StringSplitIterator::get_next_value() {
-        this->end_index = this->original_string.find(this->split);
+        if (this->start_index > this->original_string.size()) {
+            this->start_index = -1;
+            this->end_index = -1;
+            return;
+        }
+        bool finished = false;
+        this->end_index = this->original_string.find(this->split, this->start_index);
         if (this->end_index < 0) {
-            this->end_index = static_cast<int>(this->original_string.size() - 1);
+            this->end_index = static_cast<int>(this->original_string.size());
+            finished = true;
         }
         this->current_value = this->original_string.substr(this->start_index,
                 this->end_index - this->start_index);
@@ -31,8 +38,10 @@ namespace mandrake::utils::iterators {
         this->get_next_value();
     }
 
+    StringSplitIterator::StringSplitIterator(): start_index {-1}, end_index {-1} {}
+
     bool StringSplitIterator::operator!=(StringSplitIterator const& other) const {
-        return this->start_index != other.start_index;
+        return this->start_index != other.start_index || this->end_index != other.end_index;
     }
 
     void StringSplitIterator::operator++() {
