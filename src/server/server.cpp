@@ -56,7 +56,7 @@ std::string read_from_socket(int remote_socket_descriptor) {
     return buffer;
 }
 
-HttpServer::HttpServer(mandrake::app::App app, uint16_t port): port{port}, app{std::move(app)} {}
+HttpServer::HttpServer(mandrake::app::App const& app, uint16_t port): port{port}, app{app} {}
 
 void HttpServer::process_request(int remote_socket_descriptor, app::App const& app) {
     request::HttpRequest request = HttpServer::read_request(remote_socket_descriptor);

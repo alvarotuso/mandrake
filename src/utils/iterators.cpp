@@ -20,11 +20,9 @@ namespace mandrake::utils::iterators {
             this->end_index = -1;
             return;
         }
-        bool finished = false;
         this->end_index = this->original_string.find(this->split, this->start_index);
         if (this->end_index < 0) {
             this->end_index = static_cast<int>(this->original_string.size());
-            finished = true;
         }
         this->current_value = this->original_string.substr(this->start_index,
                 this->end_index - this->start_index);

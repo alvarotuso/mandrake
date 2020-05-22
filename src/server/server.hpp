@@ -10,7 +10,7 @@
 namespace mandrake::server {
 class HttpServer {
 public:
-    explicit HttpServer(mandrake::app::App app, uint16_t port);
+    explicit HttpServer(mandrake::app::App const& app, uint16_t port);
     [[nodiscard]] int run() const;
 private:
     uint16_t port = 0;
