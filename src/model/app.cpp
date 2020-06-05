@@ -5,43 +5,37 @@
 
 namespace mandrake::app {
 App::App() {
-    this->resource_tree_root = new ResourceTreeNode {};
-}
-
-App::~App() {
-    delete this->resource_tree_root;
-}
-
-ResourceTreeNode::~ResourceTreeNode() {
-    for (auto const& [token, node] : this->children) {
-        delete node;
-    }
+    this->resource_tree_root = std::make_shared<ResourceTreeNode>();
 }
 
 void App::add_resource(std::string url_pattern, resource_t &resource) {
-    ResourceTreeNode node = *this->resource_tree_root;
+    ResourceTreeNode& node = *this->resource_tree_root;
     for (std::string token : utils::iterators::StringSplitGenerator(std::move(url_pattern), "/")) {
         if (token.empty()) {
             continue;
         }
-        bool is_parameter = false;
+        bool is_variable = false;
         if (token.starts_with('<') && token.ends_with('>')) {
-            is_parameter = true;
+            is_variable = true;
             token = token.substr(1, token.size() - 2);
         }
         if (!node.children.contains(token)) {
-            auto new_node = new ResourceTreeNode {};
-            node.children.insert({token, new_node});
+            node.children.insert({token, std::make_shared<ResourceTreeNode>()});
         }
         node = *node.children.at(token);
-        node.is_variable = is_parameter;
+        node.is_variable = is_variable;
     }
     node.resource = resource;
 }
 
-RequestRouteResult::RequestRouteResult(resource_t* resource): resource {resource} {}
+RequestRouteResult::RequestRouteResult(resource_t* resource): resource {resource} {
+    this->url_variables = std::unordered_map<std::string, std::string> {};
+}
 
-std::optional<RequestRouteResult> App::route_with_variables(ResourceTreeNode* current_node, std::string remaining_path) const {
+std::optional<RequestRouteResult> App::route_with_variables(
+    std::shared_ptr<ResourceTreeNode> const& current_node,
+    std::string remaining_path
+) const {
     int end = remaining_path.find('/');
     std::string token;
     if (end < 0) {
@@ -52,14 +46,14 @@ std::optional<RequestRouteResult> App::route_with_variables(ResourceTreeNode* cu
         remaining_path = remaining_path.substr(end + 1);
     }
     if (current_node->children.contains(token)) {
-        current_node = current_node->children.at(token);
+        std::shared_ptr<ResourceTreeNode> const& child_node = current_node->children.at(token);
         if (remaining_path.empty()) {
-            return std::optional<RequestRouteResult> { RequestRouteResult { current_node->resource } };
+            return std::optional<RequestRouteResult> { RequestRouteResult { child_node->resource } };
         } else {
-            return this->route_with_variables(current_node, remaining_path);
+            return this->route_with_variables(child_node, remaining_path);
         }
     } else {
-        for (auto const& [variable_name, node] : current_node->children) {
+        for (auto [variable_name, node] : current_node->children) {
             if (node->is_variable) {
                 std::optional<RequestRouteResult> result = this->route_with_variables(node, remaining_path);
                 if (result.has_value()) {
@@ -74,6 +68,9 @@ std::optional<RequestRouteResult> App::route_with_variables(ResourceTreeNode* cu
 
 response::HttpResponse App::route_request(request::HttpRequest request) const {
     std::string url_path = request.url_path;
+    if (url_path.starts_with('/')) {
+        url_path = url_path.substr(1, url_path.length() - 1);
+    }
     if (url_path.ends_with('/')) {
         url_path = url_path.substr(0, url_path.length() - 1);
     }
